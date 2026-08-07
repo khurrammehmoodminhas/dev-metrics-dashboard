@@ -15,7 +15,67 @@ export const lookbackDays = 90;
 // per-run via --releases "8.5.0,8.6.0". Deliberately an explicit allowlist, not
 // auto-discovered from Jira — a stale list is easy to notice and fix; silently
 // including/excluding a release nobody asked for is not.
-export const releasesToTrack = ['8.5.0', '8.5.1 (Subscription)', '8.6.0'];
+const fetchReleasesFromLastSixMonths = async () => {
+  const cutoffDate = new Date();
+  cutoffDate.setMonth(cutoffDate.getMonth() - 6);
+
+  const email = process.env.JIRA_EMAIL;
+  const token = process.env.JIRA_API_TOKEN;
+
+  if (!email || !token) {
+    return [];
+  }
+
+  const authHeader = Buffer.from(`${email}:${token}`).toString('base64');
+
+  try {
+    // Note: Use /versions (plural) for fetching all project versions
+    const response = await fetch(
+      'https://arbisoft.atlassian.net/rest/api/3/project/XQ/versions',
+      {
+        headers: {
+          Authorization: `Basic ${authHeader}`,
+          Accept: 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = await response.json();
+    // Support both direct array response (/versions) and wrapped response object (/version)
+    const versions = Array.isArray(data) ? data : data.values || [];
+    const filteredVersions = versions
+      .filter((v) => {
+        // 1. Skip archived versions
+        if (v.archived) return false;
+
+        // 2. Keep all unreleased / upcoming versions
+        if (!v.released) {
+          return true;
+        }
+
+        // 3. Keep released versions if they have no date OR if released within 6 months
+        if (!v.releaseDate) {
+          return true;
+        }
+
+        const releaseDate = new Date(v.releaseDate);
+        const isRecent = releaseDate >= cutoffDate;
+
+        return isRecent;
+      })
+      .map((v) => v.name);
+
+    return filteredVersions;
+  } catch (error) {
+    return [];
+  }
+};
+
+export const releasesToTrack = await fetchReleasesFromLastSixMonths();
 
 // Custom field IDs on this Jira instance (arbisoft.atlassian.net, project XQ) —
 // each confirmed live against real tickets via the Jira API, not guessed.

@@ -33,7 +33,17 @@ Requires Node.js 20+.
 ```bash
 npm start                                # generate the dashboard for config.releasesToTrack
 npm start -- --releases "8.5.0,8.6.0"    # override which releases to include in this run
+npm run live                              # run the live server
+DEFAULT_RELEASES="8.5.1 (Subscription),8.6.0" npm run live
 ```
+
+The live dashboard also supports choosing the startup release selection via URL query parameters:
+
+- Single release: `http://localhost:3000/?releases=8.6.0`
+- Multiple releases: `http://localhost:3000/?releases=8.5.0,8.6.0`
+- Multiple query params (equivalent): `http://localhost:3000/?releases=8.5.0&releases=8.6.0`
+
+If both query params and `DEFAULT_RELEASES` are provided, the query params take precedence.
 
 Output:
 - `data/output/dashboard.html` — open this in a browser. The release picker,

@@ -31,12 +31,12 @@ function escapeHtml(value) {
  * containers.
  */
 export function renderDashboard(bundle) {
-  const { generated_at: generatedAt, releases, tickets, stale_pr_after_days: stalePrAfterDays } = bundle;
+  const { generated_at: generatedAt, releases, tickets, stale_pr_after_days: stalePrAfterDays, default_selected_releases: defaultSelectedReleases = [] } = bundle;
   const deliveryMathSource = readClientScript('deliveryMath.js');
   const timeSeriesSource = readClientScript('timeSeries.js');
   const chartsSource = readClientScript('charts.js');
   const pickerSource = readClientScript('picker.js');
-  const dataJson = JSON.stringify({ releases, tickets, stale_pr_after_days: stalePrAfterDays }).replace(/</g, '\\u003c');
+  const dataJson = JSON.stringify({ releases, tickets, stale_pr_after_days: stalePrAfterDays, default_selected_releases: defaultSelectedReleases }).replaceAll('<', '\u003c');
 
   return `<!doctype html>
 <html lang="en">
@@ -156,11 +156,20 @@ export function renderDashboard(bundle) {
     background: var(--surface-1); color: var(--text-primary); min-width: 160px;
   }
 
-  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
   .data-table th, .data-table td {
     text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--gridline);
-    font-variant-numeric: tabular-nums;
+    font-variant-numeric: tabular-nums; vertical-align: top;
   }
+  .data-table th:nth-child(1), .data-table td:nth-child(1) { width: 96px; }
+  .data-table th:nth-child(2), .data-table td:nth-child(2) { width: 104px; }
+  .data-table th:nth-child(3), .data-table td:nth-child(3) { width: 360px; }
+  .data-table th:nth-child(4), .data-table td:nth-child(4) { width: 132px; }
+  .data-table th:nth-child(5), .data-table td:nth-child(5) { width: 116px; }
+  .data-table th:nth-child(6), .data-table td:nth-child(6) { width: 64px; }
+  .data-table th:nth-child(7), .data-table td:nth-child(7) { width: 64px; }
+  .data-table th:nth-child(8), .data-table td:nth-child(8) { width: 112px; }
+  .data-table th:nth-child(9), .data-table td:nth-child(9) { width: 172px; }
   .data-table th {
     color: var(--text-secondary); font-weight: 650; font-size: 11.5px;
     text-transform: uppercase; letter-spacing: 0.02em;
@@ -168,10 +177,41 @@ export function renderDashboard(bundle) {
   .data-table th.sortable { cursor: pointer; user-select: none; }
   .data-table th.sortable:hover { color: var(--text-primary); }
   .data-table tbody tr:hover { background: var(--surface-2); }
+  .editable-cell { cursor: pointer; min-width: 0; }
+  .editable-cell.is-editing { padding: 0; }
+  .editable-cell .inline-edit-control { width: 100%; font: inherit; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary); box-sizing: border-box; }
   #developer-delivery .dev-row { cursor: pointer; }
   .data-table a { color: var(--series-1); text-decoration: none; }
   .data-table a:hover { text-decoration: underline; }
   .empty-state { color: var(--text-muted); font-size: 13px; }
+  .inline-btn {
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-primary);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 650;
+    cursor: pointer;
+  }
+  .inline-btn:hover { background: var(--surface-1); }
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(11, 11, 11, 0.45); display: flex;
+    align-items: center; justify-content: center; padding: 20px; z-index: 1000;
+  }
+  .modal-card {
+    width: min(480px, 100%); background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 12px; box-shadow: 0 10px 26px var(--shadow); padding: 20px;
+  }
+  .modal-card h3 { margin-bottom: 12px; }
+  .field-grid { display: grid; gap: 12px; }
+  .field-row { display: flex; flex-direction: column; gap: 6px; }
+  .field-row label { font-size: 12px; font-weight: 650; color: var(--text-secondary); }
+  .field-row input, .field-row select {
+    font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface-1); color: var(--text-primary);
+  }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 
   /* Charts */
   .chart-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 8px; font-size: 12px; color: var(--text-secondary); }

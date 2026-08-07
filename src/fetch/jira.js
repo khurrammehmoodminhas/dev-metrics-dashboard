@@ -12,7 +12,67 @@ function authHeader() {
   if (!email || !token) {
     throw new Error('JIRA_EMAIL / JIRA_API_TOKEN are not set (see .env.example)');
   }
-  return `Basic ${Buffer.from(`${email}:${token}`).toString('base64')}`;
+  return `Basic ${Buffer.from(email + ':' + token).toString('base64')}`;
+}
+
+function jiraHeaders() {
+  return {
+    Authorization: authHeader(),
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+}
+
+function toNumberOrThrow(value, fieldName) {
+  const numericValue = Number(value);
+  if (Number.isNaN(numericValue)) {
+    throw new Error(`Expected ${fieldName} to be numeric, received ${value}`);
+  }
+  return numericValue;
+}
+
+function normalizeFieldValue(field, value) {
+  switch (field) {
+    case 'sp':
+    case 'story_points':
+      return toNumberOrThrow(value, field);
+    case 'ap':
+    case 'actual_points':
+      return toNumberOrThrow(value, field);
+    case 'ai_contribution_percent':
+    case 'ai_contribution':
+      return toNumberOrThrow(value, field) / 100;
+    default:
+      return value;
+  }
+}
+
+export function buildJiraFieldUpdatePayload(field, value) {
+  const normalizedValue = normalizeFieldValue(field, value);
+
+  switch (field) {
+    case 'summary':
+      return { fields: { summary: normalizedValue } };
+    case 'assignee':
+      return normalizedValue === '' || normalizedValue == null
+        ? { fields: { assignee: null } }
+        : { fields: { assignee: { accountId: String(normalizedValue) } } };
+    case 'issue_type':
+      return { fields: { issuetype: { name: String(normalizedValue) } } };
+    case 'sp':
+    case 'story_points':
+      return { fields: { [jiraStoryPointsFieldId]: normalizedValue } };
+    case 'ap':
+    case 'actual_points':
+      return { fields: { [jiraActualPointsFieldId]: normalizedValue } };
+    case 'ai_contribution_percent':
+    case 'ai_contribution':
+      return { fields: { [jiraAiContributionFieldId]: normalizedValue } };
+    case 'status':
+      return { fields: { status: normalizedValue } };
+    default:
+      return { fields: { [field]: normalizedValue } };
+  }
 }
 
 const TICKET_FIELDS = [
@@ -28,6 +88,63 @@ const TICKET_FIELDS = [
   jiraActualPointsFieldId,
   jiraAiContributionFieldId,
 ];
+
+async function fetchTransitions(baseUrl, issueKey) {
+  const response = await fetch(`${baseUrl}/rest/api/3/issue/${encodeURIComponent(issueKey)}/transitions`, {
+    method: 'GET',
+    headers: jiraHeaders(),
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Jira API ${response.status} fetching transitions for ${issueKey}: ${body}`);
+  }
+  return response.json();
+}
+
+async function updateIssueStatus(baseUrl, issueKey, statusName) {
+  const transitionsResponse = await fetchTransitions(baseUrl, issueKey);
+  const transition = transitionsResponse.transitions?.find(
+    (candidate) => (candidate.to?.name ?? candidate.name)?.toLowerCase() === String(statusName).toLowerCase(),
+  );
+  if (!transition) {
+    throw new Error(`No Jira transition found for status ${statusName}`);
+  }
+
+  const response = await fetch(`${baseUrl}/rest/api/3/issue/${encodeURIComponent(issueKey)}/transitions`, {
+    method: 'POST',
+    headers: jiraHeaders(),
+    body: JSON.stringify({ transition: { id: transition.id } }),
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Jira API ${response.status} updating status for ${issueKey}: ${body}`);
+  }
+}
+
+export async function updateJiraIssueField(issueKey, field, value) {
+  const baseUrl = process.env.JIRA_BASE_URL;
+  if (!baseUrl) {
+    throw new Error('JIRA_BASE_URL is not set (see .env.example)');
+  }
+
+  if (field === 'status') {
+    await updateIssueStatus(baseUrl, issueKey, value);
+    return { key: issueKey, field, value };
+  }
+
+  const response = await fetch(`${baseUrl}/rest/api/3/issue/${encodeURIComponent(issueKey)}`, {
+    method: 'PUT',
+    headers: jiraHeaders(),
+    body: JSON.stringify(buildJiraFieldUpdatePayload(field, value)),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Jira API ${response.status} updating ${field} on ${issueKey}: ${body}`);
+  }
+
+  return { key: issueKey, field, value };
+}
 
 /**
  * Fetches every Jira issue belonging to any of the given fixVersions, in one JQL
@@ -54,11 +171,7 @@ export async function fetchTicketsByFixVersions(releaseNames) {
     // eslint-disable-next-line no-await-in-loop
     const response = await fetch(`${baseUrl}/rest/api/3/search/jql`, {
       method: 'POST',
-      headers: {
-        Authorization: authHeader(),
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
+      headers: jiraHeaders(),
       body: JSON.stringify({
         jql,
         maxResults: PAGE_SIZE,

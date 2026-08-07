@@ -5,9 +5,48 @@
 (function () {
   var DATA = window.__DASHBOARD_DATA__;
 
+  function getReleaseNames() {
+    return DATA.releases.map(function (r) { return r.name; });
+  }
+
+  function parseReleaseTokens(value) {
+    return value
+      .split(',')
+      .map(function (token) { return token.trim(); })
+      .filter(function (token) { return token.length > 0; });
+  }
+
+  function getQuerySelectedReleases() {
+    if (typeof window === 'undefined' || !window.location || typeof window.location.search !== 'string') {
+      return [];
+    }
+    var params = new URLSearchParams(window.location.search);
+    var releases = [];
+    params.getAll('releases').forEach(function (value) {
+      parseReleaseTokens(value).forEach(function (name) {
+        releases.push(name);
+      });
+    });
+    return releases;
+  }
+
+  function getDefaultSelectedReleaseNames() {
+    var validNames = new Set(getReleaseNames());
+    var queryReleases = getQuerySelectedReleases().filter(function (name) { return validNames.has(name); });
+    if (queryReleases.length > 0) {
+      return queryReleases;
+    }
+    if (Array.isArray(DATA.default_selected_releases) && DATA.default_selected_releases.length > 0) {
+      return DATA.default_selected_releases.filter(function (name) { return validNames.has(name); });
+    }
+    return getReleaseNames();
+  }
+
   var state = {
-    selectedReleases: new Set(DATA.releases.map(function (r) { return r.name; })),
+    selectedReleases: new Set(getDefaultSelectedReleaseNames()),
     selectedDeveloper: null,
+    selectedRepoOpenPrs: [],
+    selectedRepoName: '',
     ticketFilters: { status: '', issueType: '', developer: '' },
     sortState: { column: null, direction: 'desc' },
   };
@@ -19,12 +58,12 @@
   }
 
   function fmtNum(value, digits) {
-    if (typeof value !== 'number' || isNaN(value)) return '—';
+    if (typeof value !== 'number' || Number.isNaN(value)) return '—';
     return value.toLocaleString(undefined, { maximumFractionDigits: digits || 0 });
   }
 
   function fmtPercent(value) {
-    return typeof value === 'number' && !isNaN(value) ? Math.round(value) + '%' : '—';
+    return typeof value === 'number' && !Number.isNaN(value) ? Math.round(value) + '%' : '—';
   }
 
   function getVisibleTickets() {
@@ -62,6 +101,185 @@
       value +
       '</span></div>'
     );
+  }
+
+  function getEditableDisplayValue(field, ticket) {
+    if (field === 'summary') return ticket.summary || '';
+    if (field === 'status') return ticket.status || '';
+    if (field === 'assignee') return ticket.assignee_account_id || '';
+    if (field === 'issue_type') return ticket.issue_type || '';
+    if (field === 'sp') return ticket.sp == null ? '' : ticket.sp;
+    if (field === 'ap') return ticket.ap == null ? '' : ticket.ap;
+    if (field === 'ai_contribution_percent') return ticket.ai_contribution_percent == null ? '' : ticket.ai_contribution_percent;
+    return '';
+  }
+
+  function getAssigneeOptions() {
+    var developers = new Map();
+    Object.values(DATA.tickets).forEach(function (ticket) {
+      if (ticket.assignee_account_id) {
+        developers.set(ticket.assignee_account_id, ticket.assignee_display_name || ticket.assignee_account_id);
+      }
+    });
+    return Array.from(developers.entries()).map(function (entry) {
+      return { value: entry[0], label: entry[1] };
+    });
+  }
+
+  function getTicketStatusOptions() {
+    var statuses = getVisibleTickets()
+      .map(function (ticket) { return ticket.status; })
+      .filter(function (value) { return Boolean(value); });
+    return Array.from(new Set(statuses)).sort(function (a, b) {
+      return String(a).localeCompare(String(b));
+    });
+  }
+
+  function getIssueTypeOptions() {
+    var issueTypes = getVisibleTickets()
+      .map(function (ticket) { return ticket.issue_type; })
+      .filter(function (value) { return Boolean(value); });
+    return Array.from(new Set(issueTypes)).sort(function (a, b) {
+      return String(a).localeCompare(String(b));
+    });
+  }
+
+  function buildInlineEditorConfig(field, ticket) {
+    var value = getEditableDisplayValue(field, ticket);
+    if (field === 'status') {
+      return { type: 'select', value: value, options: getTicketStatusOptions() };
+    }
+    if (field === 'assignee') {
+      var options = [{ value: '', label: 'Unassigned' }].concat(getAssigneeOptions());
+      return { type: 'select', value: value, options: options };
+    }
+    if (field === 'issue_type') {
+      return { type: 'select', value: value, options: getIssueTypeOptions() };
+    }
+    return { type: 'input', value: value, options: [] };
+  }
+
+  function normalizeInlineEditValue(field, value) {
+    if (value === '' || value == null) {
+      return field === 'sp' || field === 'ap' || field === 'ai_contribution_percent' ? null : '';
+    }
+
+    if (field === 'sp' || field === 'ap' || field === 'ai_contribution_percent') {
+      var numericValue = Number(value);
+      return Number.isNaN(numericValue) ? value : numericValue;
+    }
+
+    return value;
+  }
+
+  function renderEditableCell(ticket, field) {
+    var value = getEditableDisplayValue(field, ticket);
+    var text = '—';
+    if (field === 'assignee') {
+      text = escapeHtml(ticket.assignee_display_name || 'Unassigned');
+    } else {
+      text = value === '' ? '—' : escapeHtml(value);
+    }
+    return '<td class="editable-cell" data-ticket-key="' + escapeHtml(ticket.key) + '" data-field="' + escapeHtml(field) + '" title="Click to edit">' + text + '</td>';
+  }
+
+  function saveInlineTicketEdit(cell, ticket, field, control) {
+    if (cell.__saving) return;
+    var nextValue = normalizeInlineEditValue(field, control.value);
+    var currentValue = getEditableDisplayValue(field, ticket);
+    if (nextValue === currentValue || (nextValue == null && currentValue === '') || (nextValue != null && String(nextValue) === String(currentValue))) {
+      cell.classList.remove('is-editing');
+      cell.innerHTML = escapeHtml(getEditableDisplayValue(field, ticket));
+      return;
+    }
+
+    cell.__saving = true;
+    cell.classList.add('is-saving');
+    control.disabled = true;
+
+    fetch('/api/tickets/' + encodeURIComponent(ticket.key), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ updates: { [field]: nextValue } }),
+    })
+      .then(function (response) {
+        return response.json().then(function (payload) {
+          if (!response.ok || !payload.ok) {
+            throw new Error(payload.error || 'Unable to update Jira.');
+          }
+          return payload;
+        });
+      })
+      .then(function (payload) {
+        var updatedTicket = payload.ticket || Object.assign({}, ticket, { [field]: nextValue });
+        DATA.tickets[ticket.key] = updatedTicket;
+        window.__DASHBOARD_DATA__ = { ...window.__DASHBOARD_DATA__, tickets: DATA.tickets };
+        renderAll();
+      })
+      .catch(function (error) {
+        window.alert(error.message);
+        cell.classList.remove('is-editing');
+        cell.innerHTML = escapeHtml(getEditableDisplayValue(field, ticket));
+      })
+      .finally(function () {
+        cell.__saving = false;
+        cell.classList.remove('is-saving');
+      });
+  }
+
+  function openInlineTicketEditor(cell) {
+    if (cell.__saving || cell.classList.contains('is-editing')) return;
+    var ticketKey = cell.getAttribute('data-ticket-key');
+    var field = cell.getAttribute('data-field');
+    var ticket = DATA.tickets[ticketKey];
+    if (!ticket) return;
+
+    var config = buildInlineEditorConfig(field, ticket);
+    var controlHtml = config.type === 'select'
+      ? '<select class="inline-edit-control">' + config.options.map(function (option) {
+        var optionValue = typeof option === 'object' ? option.value : option;
+        var optionLabel = typeof option === 'object' ? option.label : option;
+        var selected = String(optionValue) === String(config.value) ? 'selected' : '';
+        return '<option value="' + escapeHtml(optionValue) + '" ' + selected + '>' + escapeHtml(optionLabel) + '</option>';
+      }).join('') + '</select>'
+      : '<input class="inline-edit-control" type="text" value="' + escapeHtml(config.value) + '" />';
+
+    cell.classList.add('is-editing');
+    cell.innerHTML = controlHtml;
+
+    var control = cell.querySelector('.inline-edit-control');
+    if (control && typeof control.focus === 'function') {
+      control.focus();
+      if (typeof control.select === 'function' && control.tagName === 'INPUT') {
+        control.select();
+      }
+    }
+
+    control.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        saveInlineTicketEdit(cell, ticket, field, control);
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        cell.classList.remove('is-editing');
+        cell.innerHTML = escapeHtml(getEditableDisplayValue(field, ticket));
+      }
+    });
+
+    control.addEventListener('blur', function () {
+      saveInlineTicketEdit(cell, ticket, field, control);
+    });
+  }
+
+  function bindInlineTicketEditing(container) {
+    if (container.__inlineEditBound) return;
+    container.addEventListener('click', function (event) {
+      var cell = event.target && event.target.closest ? event.target.closest('.editable-cell') : null;
+      if (!cell) return;
+      openInlineTicketEditor(cell);
+    });
+    container.__inlineEditBound = true;
   }
 
   function statPair(label, value) {
@@ -225,6 +443,37 @@
       })
       .join('');
 
+    var repoRows = trend.repo_breakdown
+      .map(function (row) {
+        var openNowCell = row.open_count
+          ? '<td><button class="inline-btn repo-open-count" data-repo="' + escapeHtml(row.repo) + '">' + fmtNum(row.open_count) + '</button></td>'
+          : '<td>' + fmtNum(row.open_count) + '</td>';
+        return (
+          '<tr><td>' + escapeHtml(row.repo) + '</td><td>' + fmtNum(row.opened_count) + '</td><td>' +
+          fmtNum(row.merged_count) + '</td>' +
+          openNowCell +
+          '</tr>'
+        );
+      })
+      .join('');
+
+    var openPrDetailsHtml = '';
+    if (state.selectedRepoOpenPrs && state.selectedRepoOpenPrs.length > 0) {
+      openPrDetailsHtml =
+        '<h3 class="subsection-title">Open PRs for ' + escapeHtml(state.selectedRepoName) + '</h3>' +
+        '<table class="data-table"><thead><tr><th>PR</th><th>Title</th><th>Age</th></tr></thead><tbody>' +
+        state.selectedRepoOpenPrs
+          .map(function (pr) {
+            return (
+              '<tr><td><a href="' + escapeHtml(pr.pr_url) + '" target="_blank" rel="noopener">' +
+              escapeHtml(pr.repo.split('/')[1]) + ' #' + pr.pr_number + '</a></td><td>' +
+              escapeHtml(pr.pr_title) + '</td><td>' + fmtNum(pr.days_open) + 'd</td></tr>'
+            );
+          })
+          .join('') +
+        '</tbody></table>';
+    }
+
     el.innerHTML =
       '<div class="kpi-row">' +
       kpiTile('Total PRs', fmtNum(trend.total_prs)) +
@@ -233,12 +482,40 @@
       kpiTile('Open > ' + trend.stale_pr_after_days + 'd', fmtNum(trend.stale_pr_count)) +
       '</div>' +
       chart +
+      '<h3 class="subsection-title">Opened/merged PRs by repo</h3>' +
+      '<table class="data-table"><thead><tr><th>Repository</th><th>Opened</th><th>Merged</th><th>Open now</th></tr></thead><tbody>' +
+      (repoRows || '<tr><td colspan="4" class="empty-state">No PR evidence for the selected tickets.</td></tr>') +
+      '</tbody></table>' +
+      openPrDetailsHtml +
       (trend.stale_prs.length > 0
         ? '<h3 class="subsection-title">PRs open longer than ' + trend.stale_pr_after_days + ' days</h3>' +
           '<table class="data-table"><thead><tr><th>PR</th><th>Title</th><th>Days open</th></tr></thead><tbody>' +
           staleRows +
           '</tbody></table>'
         : '');
+
+    Array.prototype.forEach.call(el.querySelectorAll('.repo-open-count'), function (button) {
+      button.addEventListener('click', function () {
+        var repo = button.getAttribute('data-repo');
+        var selected = trend.repo_breakdown.find(function (row) { return row.repo === repo; });
+        if (selected) {
+          state.selectedRepoOpenPrs = selected.open_prs.map(function (pr) {
+            return {
+              pr_url: pr.pr_url,
+              pr_title: pr.pr_title,
+              pr_number: pr.pr_number,
+              repo: pr.repo,
+              days_open: Math.round((new Date().getTime() - new Date(pr.pr_created_at).getTime()) / (1000 * 60 * 60 * 24)),
+            };
+          });
+          state.selectedRepoName = repo;
+        } else {
+          state.selectedRepoOpenPrs = [];
+          state.selectedRepoName = '';
+        }
+        renderPrActivityTrend();
+      });
+    });
   }
 
   function renderCycleTime() {
@@ -476,27 +753,21 @@
     var body = tickets
       .map(function (t) {
         return (
-          '<tr><td><a href="' +
+          '<tr>' +
+          '<td><a href="' +
           escapeHtml(t.jira_url) +
           '" target="_blank" rel="noopener">' +
           escapeHtml(t.key) +
-          '</a></td><td>' +
-          escapeHtml(t.issue_type) +
-          '</td><td>' +
-          escapeHtml(t.summary) +
-          '</td><td>' +
-          escapeHtml(t.assignee_display_name || 'Unassigned') +
-          '</td><td>' +
-          escapeHtml(t.status) +
-          '</td><td>' +
-          (t.sp == null ? '—' : t.sp) +
-          '</td><td>' +
-          (t.ap == null ? '—' : t.ap) +
-          '</td><td>' +
-          (t.ai_contribution_percent == null ? '—' : fmtPercent(t.ai_contribution_percent)) +
-          '</td><td>' +
-          prLinksHtml(t) +
-          '</td></tr>'
+          '</a></td>' +
+          renderEditableCell(t, 'issue_type') +
+          renderEditableCell(t, 'summary') +
+          renderEditableCell(t, 'assignee') +
+          renderEditableCell(t, 'status') +
+          renderEditableCell(t, 'sp') +
+          renderEditableCell(t, 'ap') +
+          renderEditableCell(t, 'ai_contribution_percent') +
+          '<td>' + prLinksHtml(t) + '</td>' +
+          '</tr>'
         );
       })
       .join('');
@@ -523,6 +794,7 @@
       renderAllTickets();
       renderDeveloperDetails();
     });
+    bindInlineTicketEditing(el);
     Array.prototype.forEach.call(el.querySelectorAll('th.sortable'), function (th) {
       th.addEventListener('click', function () {
         var col = th.getAttribute('data-sort-col');

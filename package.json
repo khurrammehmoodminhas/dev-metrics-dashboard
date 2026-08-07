@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "node --env-file=.env src/index.js",
+    "live": "node --env-file=.env src/server.js",
     "test": "node --test"
   }
 }

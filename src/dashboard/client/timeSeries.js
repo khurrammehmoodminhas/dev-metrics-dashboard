@@ -7,7 +7,10 @@
 // mathematical shape from the date-bucketing/cumulative/distribution math here.
 
 function toDayString(isoOrDate) {
-  return new Date(isoOrDate).toISOString().slice(0, 10);
+  if (isoOrDate == null) return null;
+  const date = new Date(isoOrDate);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
 }
 
 function dayRange(startDay, endDay) {
@@ -94,9 +97,11 @@ function dedupeLinkedPrs(tickets) {
 }
 
 function earliestDay(isoDates) {
-  const present = isoDates.filter(Boolean);
+  const present = isoDates
+    .map((value) => toDayString(value))
+    .filter(Boolean);
   if (present.length === 0) return null;
-  return toDayString(present.reduce((min, d) => (d < min ? d : min)));
+  return present.reduce((min, d) => (d < min ? d : min));
 }
 
 /**
@@ -172,6 +177,7 @@ function buildPrActivityTrend(tickets, nowIso, stalePrAfterDays) {
   const nowMs = new Date(now).getTime();
   const prs = dedupeLinkedPrs(tickets);
   const openPrs = prs.filter((p) => p.pr_state === 'open');
+  const repoBreakdown = new Map();
 
   const ageInDays = (pr) => (nowMs - new Date(pr.pr_created_at).getTime()) / (1000 * 60 * 60 * 24);
   const openAges = openPrs.filter((p) => p.pr_created_at).map(ageInDays);
@@ -180,6 +186,26 @@ function buildPrActivityTrend(tickets, nowIso, stalePrAfterDays) {
     .map((p) => ({ ...p, days_open: Math.round(ageInDays(p)) }))
     .sort((a, b) => b.days_open - a.days_open);
 
+  for (const pr of prs) {
+    const repo = pr.repo ?? 'unknown';
+    if (!repoBreakdown.has(repo)) {
+      repoBreakdown.set(repo, {
+        repo,
+        opened_count: 0,
+        merged_count: 0,
+        open_count: 0,
+        stale_count: 0,
+        open_prs: [],
+      });
+    }
+    const bucket = repoBreakdown.get(repo);
+    bucket.opened_count += 1;
+    if (pr.pr_state === 'merged') bucket.merged_count += 1;
+    if (pr.pr_state === 'open') {
+      bucket.open_count += 1;
+      bucket.open_prs.push(pr);
+    }
+  }
   const rangeStart = earliestDay(prs.map((p) => p.pr_created_at));
   const rangeEnd = toDayString(now);
 
@@ -192,6 +218,7 @@ function buildPrActivityTrend(tickets, nowIso, stalePrAfterDays) {
     stale_pr_after_days: stalePrAfterDays,
     stale_pr_count: stalePrs.length,
     stale_prs: stalePrs,
+    repo_breakdown: [...repoBreakdown.values()].sort((a, b) => b.opened_count - a.opened_count || a.repo.localeCompare(b.repo)),
   };
 }
 
