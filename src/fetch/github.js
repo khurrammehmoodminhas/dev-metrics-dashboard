@@ -69,20 +69,33 @@ export async function fetchPullRequestCommits(repo, number) {
   return githubGetJson(`${API_BASE}/repos/${owner}/${name}/pulls/${number}/commits?per_page=100`);
 }
 
+export async function fetchPullRequestReviews(repo, number) {
+  const [owner, name] = repo.split('/');
+  return githubGetJson(`${API_BASE}/repos/${owner}/${name}/pulls/${number}/reviews?per_page=100`);
+}
+
+export async function fetchPullRequestComments(repo, number) {
+  const [owner, name] = repo.split('/');
+  return githubGetJson(`${API_BASE}/repos/${owner}/${name}/issues/${number}/comments?per_page=100`);
+}
+
 /**
- * Fetches everything needed to derive commit-level AI co-authorship for a
- * single PR. Only 1 API call per PR — this dashboard is Jira-centric now, so
- * PR review/comment timing (which used to cost 3 more calls per PR) is no
- * longer computed anywhere; PRs are supporting evidence, not a scored metric.
+ * Fetches everything needed to derive commit-level AI co-authorship and code
+ * review metrics for a single PR. Now includes:
+ * - commits: for AI co-authorship analysis
+ * - reviews: for code review timing and reviewer identification (formal reviews)
+ * - comments: for code review comments (separate from formal reviews)
  * Callers should only invoke this for new/changed PRs (see the watermark logic
  * in fetchNewOrUpdatedPullRequests).
  */
 export async function fetchPullRequestActivity(repo, number) {
   try {
     const commits = await fetchPullRequestCommits(repo, number);
-    return { commits };
+    const reviews = await fetchPullRequestReviews(repo, number);
+    const comments = await fetchPullRequestComments(repo, number);
+    return { commits, reviews, comments };
   } catch (error) {
     warn(`Failed to fetch activity for ${repo}#${number}: ${error.message}`);
-    return { commits: [] };
+    return { commits: [], reviews: [], comments: [] };
   }
 }

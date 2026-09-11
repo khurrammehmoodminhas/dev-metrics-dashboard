@@ -9,6 +9,11 @@ function toEvidence(pr) {
     pr_merged_at: pr.merged_at ?? null,
     pr_ai_checklist_percent: pr.ai_contribution?.checklist_score_percent ?? null,
     pr_commit_co_author_percent: pr.ai_contribution?.commit_ai_percent ?? null,
+    pr_assignee_login: pr.assignee_login ?? null,
+    pr_reviewers: pr.reviewers ?? [],
+    pr_time_to_first_review_hours: pr.time_to_first_review_hours ?? null,
+    pr_time_to_approval_hours: pr.time_to_approval_hours ?? null,
+    pr_review_completion_time_hours: pr.review_completion_time_hours ?? null,
   };
 }
 

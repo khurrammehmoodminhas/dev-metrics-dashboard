@@ -3,8 +3,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const cacheRoot = path.join(__dirname, '..', '..', 'data', 'cache');
-const outputRoot = path.join(__dirname, '..', '..', 'data', 'output');
+// Vercel functions have a read-only deployment filesystem. `/tmp` is writable
+// for the lifetime of a warm function instance, so retain the local cache
+// behavior there without treating it as durable storage.
+const runtimeRoot = process.env.VERCEL
+  ? path.join('/tmp', 'dev-metrics-dashboard')
+  : path.join(__dirname, '..', '..', 'data');
+const cacheRoot = path.join(runtimeRoot, 'cache');
+const outputRoot = path.join(runtimeRoot, 'output');
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });

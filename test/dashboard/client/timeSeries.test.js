@@ -152,6 +152,20 @@ test('buildPrActivityTrend never attributes a stale PR to a developer (team-leve
   assert.ok(!('assignee_account_id' in trend.stale_prs[0]));
 });
 
+test('buildPrActivityTrend breaks PR counts out by repository', () => {
+  const tickets = [
+    ticket({ linked_prs: [pr({ repo: 'bvs-xiangqi/xiangqi-client', pr_number: 1, pr_state: 'merged', pr_created_at: '2026-07-01T00:00:00Z', pr_merged_at: '2026-07-02T00:00:00Z' })] }),
+    ticket({ linked_prs: [pr({ repo: 'bvs-xiangqi/xiangqi-server', pr_number: 2, pr_state: 'open', pr_created_at: '2026-07-01T00:00:00Z', pr_merged_at: null })] }),
+  ];
+  const trend = buildPrActivityTrend(tickets, '2026-07-03T00:00:00Z', 14);
+  const client = trend.repo_breakdown.find((item) => item.repo === 'bvs-xiangqi/xiangqi-client');
+  const server = trend.repo_breakdown.find((item) => item.repo === 'bvs-xiangqi/xiangqi-server');
+  assert.equal(client.opened_count, 1);
+  assert.equal(client.merged_count, 1);
+  assert.equal(server.opened_count, 1);
+  assert.equal(server.merged_count, 0);
+});
+
 test('buildDeveloperActivityTimeline scopes to one developer\'s own tickets only', () => {
   const tickets = [
     ticket({ assignee_account_id: 'dev-a', resolved_at: '2026-07-05T00:00:00Z' }),

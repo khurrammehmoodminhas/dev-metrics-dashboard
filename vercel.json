@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/", "destination": "/api/dashboard" },
+    { "source": "/bundle.json", "destination": "/api/bundle" }
+  ],
+  "functions": {
+    "api/dashboard.js": {
+      "maxDuration": 300,
+      "includeFiles": "src/dashboard/client/**"
+    },
+    "api/bundle.js": { "maxDuration": 300 },
+    "api/tickets/[issueKey].js": { "maxDuration": 300 },
+    "api/refresh.js": { "maxDuration": 300 }
+  },
+  "crons": [
+    { "path": "/api/refresh", "schedule": "0 0 * * *" }
+  ]
+}

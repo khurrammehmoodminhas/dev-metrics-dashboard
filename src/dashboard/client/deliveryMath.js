@@ -42,6 +42,28 @@ function computeReleaseSummary(tickets) {
 }
 
 /**
+ * Planned Story Points and delivered Actual Points for each release. A ticket
+ * assigned to multiple releases appears in each of those releases: this is a
+ * release comparison, rather than a deduplicated combined-release summary.
+ */
+function computeReleasePointComparison(tickets, releaseNames, developerId) {
+  const rows = new Map(releaseNames.map((name) => [name, { release_name: name, planned_sp: 0, delivered_ap: 0, ticket_count: 0 }]));
+
+  for (const ticket of tickets) {
+    if (developerId && ticket.assignee_account_id !== developerId) continue;
+    for (const version of ticket.fix_versions || []) {
+      const row = rows.get(version.name);
+      if (!row) continue;
+      row.ticket_count += 1;
+      if (typeof ticket.sp === 'number') row.planned_sp += ticket.sp;
+      if (typeof ticket.ap === 'number') row.delivered_ap += ticket.ap;
+    }
+  }
+
+  return releaseNames.map((name) => rows.get(name));
+}
+
+/**
  * Per-developer delivery distribution: ticket count, planned SP, delivered AP,
  * average AI contribution (null-excluded, with its own coverage count), and —
  * relative to the *current* ticket selection only — % of the highest AP

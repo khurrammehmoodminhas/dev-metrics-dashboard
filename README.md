@@ -25,6 +25,13 @@ cp .env.example .env
 - `JIRA_EMAIL` / `JIRA_API_TOKEN`: a Jira Cloud API token
   (id.atlassian.com → Security → API tokens) for `JIRA_BASE_URL`
   (defaults to `https://arbisoft.atlassian.net`).
+- `AI_API_KEY`: an API key for the configured OpenAI-compatible provider. Groq's
+  developer tier is the default low-cost/free option. The assistant sends questions to the model, while Jira/GitHub facts are
+  retrieved through server-side tools from the dashboard bundle.
+- `AI_BASE_URL`: optional provider base URL (defaults to Groq's
+  `https://api.groq.com/openai/v1`).
+- `AI_MODEL`: optional model name (defaults to
+  `llama-3.1-8b-instant`).
 
 Requires Node.js 20+.
 
@@ -33,7 +40,54 @@ Requires Node.js 20+.
 ```bash
 npm start                                # generate the dashboard for config.releasesToTrack
 npm start -- --releases "8.5.0,8.6.0"    # override which releases to include in this run
+npm run live                              # run the live server
+DEFAULT_RELEASES="8.5.1 (Subscription),8.6.0" npm run live
 ```
+
+## Deploying to Vercel
+
+This repository includes Vercel serverless routes, so deploy the repository as
+an **Other** framework project — no build command or output directory is
+needed. Set these environment variables in the Vercel project settings:
+
+- `GITHUB_TOKEN`, `JIRA_BASE_URL`, `JIRA_EMAIL`, and `JIRA_API_TOKEN`
+- `DASHBOARD_USERNAME` and `DASHBOARD_PASSWORD` (required on Vercel; the site
+  uses HTTP Basic Auth to protect both the dashboard and Jira update API)
+- `CRON_SECRET` (a random secret used by Vercel Cron)
+- `BLOB_READ_WRITE_TOKEN` from a **private** Vercel Blob store connected to the
+  project
+- optional: `DEFAULT_RELEASES`
+
+The deployment serves the dashboard at `/`, accepts the existing
+`?releases=` query parameters, and retains inline Jira editing at
+`/api/tickets/:issueKey`. A protected Vercel Cron route refreshes the saved
+dashboard bundle daily; page loads serve the last successful snapshot
+immediately. The visible **Refresh dashboard** button and Jira edits refresh
+that same snapshot on demand. This schedule works on Vercel Hobby, whose Cron
+jobs are limited to daily runs. The low-level GitHub/Jira working cache remains
+a best-effort `/tmp` optimization, while the displayed dashboard snapshot is
+stored durably in private Blob storage.
+
+The live dashboard also supports choosing the startup release selection via URL query parameters:
+
+- Single release: `http://localhost:3000/?releases=8.6.0`
+- Multiple releases: `http://localhost:3000/?releases=8.5.0,8.6.0`
+- Multiple query params (equivalent): `http://localhost:3000/?releases=8.5.0&releases=8.6.0`
+
+If both query params and `DEFAULT_RELEASES` are provided, the query params take precedence.
+
+### Engineering data assistant
+
+The dashboard includes a protected assistant panel powered by an
+OpenAI-compatible model provider. It can
+search the dashboard's Jira tickets and linked GitHub pull requests, calculate
+release summaries, and answer questions about developers, story points, actual
+points, statuses, and delivery evidence. It is constrained to the data tools
+defined by the server, so answers can only use the current dashboard bundle.
+
+The assistant can propose Jira edits for supported fields, but every edit is
+shown in the dashboard and requires an explicit confirmation before the
+existing Jira update path is called. GitHub data is read-only.
 
 Output:
 - `data/output/dashboard.html` — open this in a browser. The release picker,

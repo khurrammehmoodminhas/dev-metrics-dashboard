@@ -22,6 +22,7 @@ vm.runInThisContext(source, { filename: filePath });
 
 export const filterTicketsBySelectedReleases = globalThis.filterTicketsBySelectedReleases;
 export const computeReleaseSummary = globalThis.computeReleaseSummary;
+export const computeReleasePointComparison = globalThis.computeReleasePointComparison;
 export const computeDeveloperDelivery = globalThis.computeDeveloperDelivery;
 export const computeTicketStatusBreakdown = globalThis.computeTicketStatusBreakdown;
 export const computeIssueTypeBreakdown = globalThis.computeIssueTypeBreakdown;

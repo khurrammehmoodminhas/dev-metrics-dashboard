@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { repos, lookbackDays, releasesToTrack, stalePrAfterDays } from '../config/config.js';
 import { fetchNewOrUpdatedPullRequests, fetchPullRequestActivity } from './fetch/github.js';
 import { fetchTicketsByFixVersions } from './fetch/jira.js';
@@ -30,6 +32,7 @@ function parseArgs(argv) {
 
 function buildPrRecord(repo, rawPr, activity) {
   const { ticketId, source } = extractTicketId(rawPr.title, rawPr.body);
+
   return {
     id: `${repo}#${rawPr.number}`,
     repo,
@@ -42,6 +45,7 @@ function buildPrRecord(repo, rawPr, activity) {
     linked_ticket_id: ticketId,
     ticket_source: source,
     ai_contribution: combineAiSignals(parseAiChecklist(rawPr.body), computeCommitAiPercent(activity.commits)),
+    assignee_login: rawPr.assignee?.login ?? null,
     fetched_at: new Date().toISOString(),
   };
 }
@@ -134,11 +138,10 @@ function buildReleaseMeta(ticketsByKey, releases) {
   return [...seen.values()];
 }
 
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
+export async function generateDashboard({ releases: overrideReleases = null, writeOutput: shouldWriteOutput = true } = {}) {
   const now = new Date();
   const lookbackStart = new Date(now.getTime() - lookbackDays * 24 * 60 * 60 * 1000).toISOString();
-  const releases = args.releases ? args.releases.split(',').map((r) => r.trim()) : releasesToTrack;
+  const releases = overrideReleases ? overrideReleases : releasesToTrack;
 
   const allPrRecords = [];
   for (const repo of repos) {
@@ -167,20 +170,36 @@ async function main() {
   }
   writeJiraTicketsCache(ticketsByKey);
 
+  const defaultSelectedReleases = process.env.DEFAULT_RELEASES
+    ? process.env.DEFAULT_RELEASES.split(',').map((name) => name.trim()).filter(Boolean)
+    : [];
+
   const bundle = {
     generated_at: now.toISOString(),
     releases: buildReleaseMeta(ticketsByKey, releases),
     tickets: ticketsByKey,
     stale_pr_after_days: stalePrAfterDays,
+    default_selected_releases: defaultSelectedReleases,
   };
 
-  writeOutput('bundle.json', bundle);
-  const dashboardPath = writeOutput('dashboard.html', renderDashboard(bundle));
-
-  log(`Wrote ${dashboardPath}`);
+  if (shouldWriteOutput) {
+    writeOutput('bundle.json', bundle);
+    const dashboardPath = writeOutput('dashboard.html', renderDashboard(bundle));
+    log(`Wrote ${dashboardPath}`);
+  }
+  return bundle;
 }
 
-main().catch((error) => {
-  warn(error.stack ?? error.message);
-  process.exitCode = 1;
-});
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const releases = args.releases ? args.releases.split(',').map((r) => r.trim()) : null;
+  await generateDashboard({ releases });
+}
+
+const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+if (isMainModule) {
+  main().catch((error) => {
+    warn(error.stack ?? error.message);
+    process.exitCode = 1;
+  });
+}

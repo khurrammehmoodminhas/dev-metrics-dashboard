@@ -12,6 +12,11 @@ function fakePr(overrides) {
     merged_at: '2026-07-03T00:00:00Z',
     linked_ticket_id: 'XQ-5003',
     ai_contribution: { checklist_score_percent: 85, commit_ai_percent: 90 },
+    assignee_login: null,
+    reviewers: [],
+    time_to_first_review_hours: null,
+    time_to_approval_hours: null,
+    review_completion_time_hours: null,
     ...overrides,
   };
 }
@@ -31,6 +36,11 @@ test('groups a single PR under its linked ticket key', () => {
     pr_merged_at: '2026-07-03T00:00:00Z',
     pr_ai_checklist_percent: 85,
     pr_commit_co_author_percent: 90,
+    pr_assignee_login: null,
+    pr_reviewers: [],
+    pr_time_to_first_review_hours: null,
+    pr_time_to_approval_hours: null,
+    pr_review_completion_time_hours: null,
   });
 });
 
