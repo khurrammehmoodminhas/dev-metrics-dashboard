@@ -31,5 +31,8 @@ test('mapInBatches stops before starting later batches after a failure', async (
 });
 
 test('mapInBatches rejects invalid concurrency', async () => {
-  await assert.rejects(mapInBatches([1], 0, async (item) => item), RangeError);
+  await assert.rejects(
+    mapInBatches([1], 0, async (item) => item),
+    RangeError,
+  );
 });

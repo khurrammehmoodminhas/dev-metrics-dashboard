@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { parseAiChecklist, combineAiSignals } from '../../src/parse/aiChecklist.js';
 
 const FULL_CHECKLIST_BODY = `
-[XQ-4846](https://arbisoft.atlassian.net/browse/XQ-4846)
+[ACME-4846](https://acme.atlassian.net/browse/ACME-4846)
 
 #### Summary of changes
 - Did the thing
@@ -29,7 +29,7 @@ const FULL_CHECKLIST_BODY = `
 `;
 
 const UNFILLED_TEMPLATE_BODY = `
-[XQ-xyz](https://arbisoft.atlassian.net/browse/XQ-xyz)
+[ACME-xyz](https://acme.atlassian.net/browse/ACME-xyz)
 
 #### Summary of changes
 
@@ -56,7 +56,7 @@ Please include a brief description of what was changed
 `;
 
 const NO_CHECKLIST_BODY = `
-[XQ-1000](https://arbisoft.atlassian.net/browse/XQ-1000)
+[ACME-1000](https://acme.atlassian.net/browse/ACME-1000)
 
 #### Summary of changes
 - Legacy PR from before the AI Contribution Checklist existed

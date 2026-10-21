@@ -53,6 +53,15 @@ test('neutralises </script> sequences inside ticket data', () => {
       'ACME-1': { key: 'ACME-1', summary: '</script><script>alert(1)</script>', fix_versions: [], linked_prs: [] },
     },
   });
+  // Assert on the whole page: extracting scripts with a regex would itself
+  // stop at the first </script> and hide a breakout.
+  assert.ok(!html.includes('<script>alert(1)'));
   const data = inlineScripts(html)[0];
-  assert.ok(!data.includes('</script>'));
+  const parsed = JSON.parse(
+    data
+      .trim()
+      .replace(/^window\.__DASHBOARD_DATA__ = /, '')
+      .replace(/;$/, ''),
+  );
+  assert.equal(parsed.tickets['ACME-1'].summary, '</script><script>alert(1)</script>');
 });

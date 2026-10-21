@@ -40,6 +40,10 @@ export async function handleTicketUpdate({ issueKey, body, refresh, config = get
   } catch (error) {
     return failure(400, error.message);
   }
+  // Scope writes to this deployment's project: the Jira account may be able
+  // to edit other projects too.
+  if (!key.startsWith(`${config.jira.projectKey}-`))
+    return failure(403, `Only ${config.jira.projectKey} tickets can be edited from this dashboard.`);
 
   const updates = body?.updates && typeof body.updates === 'object' ? body.updates : body;
   const entries = Object.entries(updates || {}).filter(([field]) => field !== 'updates');

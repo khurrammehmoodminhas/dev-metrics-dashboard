@@ -51,10 +51,13 @@
     // 4) Inline code first so markdown inside isn't parsed.
     escaped = escaped.replace(/`([^`]+)`/g, '<code class="assistant-code">$1</code>');
 
-    // 5) Links: [text](url) — block unsafe schemes.
+    // 5) Links: [text](url) — http(s) only.
     escaped = escaped.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (m, linkText, url) {
-      if (/^(javascript|data|vbscript):/i.test(url)) return linkText;
-      return makeToken('<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer">' + linkText + '</a>');
+      // Allow-list http(s) only: browsers strip leading whitespace, so a
+      // block-list like ^javascript: is bypassed by "[x]( javascript:…)".
+      var href = url.trim();
+      if (!/^https?:\/\//i.test(href)) return linkText;
+      return makeToken('<a href="' + escapeHtml(href) + '" target="_blank" rel="noopener noreferrer">' + linkText + '</a>');
     });
 
     // 6) Bold, then italic (after bold so ** borders aren't matched).

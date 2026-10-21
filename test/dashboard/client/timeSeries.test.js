@@ -18,7 +18,7 @@ import {
 
 function ticket(overrides) {
   return {
-    key: 'XQ-0000',
+    key: 'ACME-0000',
     summary: 'A ticket',
     status_category: 'done',
     sp: 2,
@@ -36,7 +36,7 @@ function ticket(overrides) {
 
 function pr(overrides) {
   return {
-    repo: 'bvs-xiangqi/xiangqi-client',
+    repo: 'acme/web-client',
     pr_number: 1,
     pr_state: 'merged',
     pr_created_at: '2026-07-01T00:00:00Z',
@@ -134,9 +134,28 @@ test('buildReleaseProgressSeries totals planned SP and rises cumulative AP/compl
   assert.equal(lastCompleted.value, 2);
 });
 
-test('buildReleaseProgressSeries returns empty series without throwing when no tickets have a created_at', () => {
-  const series = buildReleaseProgressSeries([ticket({ created_at: null })], '2026-07-02T00:00:00Z');
+test('buildReleaseProgressSeries returns empty series without throwing when no ticket has any date', () => {
+  const series = buildReleaseProgressSeries([ticket({ created_at: null, resolved_at: null })], '2026-07-02T00:00:00Z');
   assert.deepEqual(series.cumulative_ap_by_day, []);
+});
+
+test('buildReleaseProgressSeries starts at the first activity, not at an old backlog ticket', () => {
+  const tickets = [
+    ticket({ created_at: '2024-12-17T00:00:00Z', resolved_at: null, first_in_progress_at: null }),
+    ticket({
+      created_at: '2025-01-01T00:00:00Z',
+      first_in_progress_at: '2026-06-28T00:00:00Z',
+      resolved_at: '2026-07-01T00:00:00Z',
+    }),
+  ];
+  const series = buildReleaseProgressSeries(tickets, '2026-07-02T00:00:00Z');
+  assert.equal(series.cumulative_ap_by_day[0].date, '2026-06-28');
+});
+
+test('buildReleaseProgressSeries falls back to created_at when nothing has started yet', () => {
+  const tickets = [ticket({ created_at: '2026-06-30T00:00:00Z', resolved_at: null })];
+  const series = buildReleaseProgressSeries(tickets, '2026-07-02T00:00:00Z');
+  assert.equal(series.cumulative_ap_by_day[0].date, '2026-06-30');
 });
 
 test('buildEngineeringActivityTrend tracks PR opened/merged, tickets moving to In Progress, and completions', () => {
@@ -156,10 +175,10 @@ test('buildEngineeringActivityTrend tracks PR opened/merged, tickets moving to I
 });
 
 test('buildEngineeringActivityTrend dedupes a PR that somehow attaches to two tickets', () => {
-  const sharedPr = pr({ repo: 'bvs-xiangqi/xiangqi-client', pr_number: 99, pr_created_at: '2026-07-01T00:00:00Z' });
+  const sharedPr = pr({ repo: 'acme/web-client', pr_number: 99, pr_created_at: '2026-07-01T00:00:00Z' });
   const tickets = [
-    ticket({ key: 'XQ-1', created_at: '2026-07-01T00:00:00Z', linked_prs: [sharedPr] }),
-    ticket({ key: 'XQ-2', created_at: '2026-07-01T00:00:00Z', linked_prs: [{ ...sharedPr }] }),
+    ticket({ key: 'ACME-1', created_at: '2026-07-01T00:00:00Z', linked_prs: [sharedPr] }),
+    ticket({ key: 'ACME-2', created_at: '2026-07-01T00:00:00Z', linked_prs: [{ ...sharedPr }] }),
   ];
   const trend = buildEngineeringActivityTrend(tickets, '2026-07-01T12:00:00Z');
   assert.equal(trend.pr_opened_by_day.find((b) => b.date === '2026-07-01').value, 1);
@@ -192,7 +211,7 @@ test('buildPrActivityTrend breaks PR counts out by repository', () => {
     ticket({
       linked_prs: [
         pr({
-          repo: 'bvs-xiangqi/xiangqi-client',
+          repo: 'acme/web-client',
           pr_number: 1,
           pr_state: 'merged',
           pr_created_at: '2026-07-01T00:00:00Z',
@@ -203,7 +222,7 @@ test('buildPrActivityTrend breaks PR counts out by repository', () => {
     ticket({
       linked_prs: [
         pr({
-          repo: 'bvs-xiangqi/xiangqi-server',
+          repo: 'acme/api-server',
           pr_number: 2,
           pr_state: 'open',
           pr_created_at: '2026-07-01T00:00:00Z',
@@ -213,8 +232,8 @@ test('buildPrActivityTrend breaks PR counts out by repository', () => {
     }),
   ];
   const trend = buildPrActivityTrend(tickets, '2026-07-03T00:00:00Z', 14);
-  const client = trend.repo_breakdown.find((item) => item.repo === 'bvs-xiangqi/xiangqi-client');
-  const server = trend.repo_breakdown.find((item) => item.repo === 'bvs-xiangqi/xiangqi-server');
+  const client = trend.repo_breakdown.find((item) => item.repo === 'acme/web-client');
+  const server = trend.repo_breakdown.find((item) => item.repo === 'acme/api-server');
   assert.equal(client.opened_count, 1);
   assert.equal(client.merged_count, 1);
   assert.equal(server.opened_count, 1);

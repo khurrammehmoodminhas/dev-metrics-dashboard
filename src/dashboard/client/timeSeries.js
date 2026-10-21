@@ -184,7 +184,11 @@ function buildReleaseProgressSeries(tickets, nowIso) {
   const now = nowIso ?? new Date().toISOString();
   const totalPlannedSp = tickets.reduce((sum, t) => sum + (typeof t.sp === 'number' ? t.sp : 0), 0);
 
-  const rangeStart = earliestDay(tickets.map((t) => t.created_at));
+  // Start at the first real activity so one old backlog ticket doesn't flatten
+  // the chart; fall back to created_at when nothing has started yet.
+  const rangeStart =
+    earliestDay(tickets.flatMap((t) => [t.first_in_progress_at, t.resolved_at])) ??
+    earliestDay(tickets.map((t) => t.created_at));
   if (!rangeStart) {
     return { total_planned_sp: totalPlannedSp, cumulative_ap_by_day: [], cumulative_tickets_completed_by_day: [] };
   }

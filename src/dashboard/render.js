@@ -46,7 +46,7 @@ export function renderDashboard(bundle) {
     project_name: projectName,
     project_key: projectKey,
     warnings,
-  }).replaceAll('<', '\u003c');
+  }).replace(/</g, '\\u003c');
   const title = `${escapeHtml(projectName)} · Delivery &amp; AI Insights`;
   const githubEnabled = features.github !== false;
   const aiEnabled = features.aiContribution !== false;
@@ -199,6 +199,10 @@ export function renderDashboard(bundle) {
   .meta { color: var(--text-secondary); font-size: 13px; margin: 4px 0 0; line-height: 1.5; }
   .chart-note { color: var(--text-muted); font-size: 12px; margin: 0 0 10px; }
   .caveat { color: var(--text-muted); font-size: 12.5px; margin: -4px 0 16px; max-width: 76ch; line-height: 1.5; }
+  /* Numbered by CSS counter so sections hidden for unconfigured features leave no gap. */
+  .wrap { counter-reset: section; }
+  .section h2 { counter-increment: section; }
+  .section-num::before { content: counter(section) '. '; }
   .section > h2 {
     padding-left: 12px; border-left: 3px solid var(--series-1); position: relative;
   }
@@ -435,7 +439,7 @@ export function renderDashboard(bundle) {
   .chart-modal-close:hover { background: var(--surface-3); }
   .chart-modal-body { padding: 24px; }
 
-  .histogram { display: flex; flex-direction: column; gap: 10px; }
+  .histogram { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
   .histogram-row { display: grid; grid-template-columns: 56px 1fr 32px; align-items: center; gap: 8px; font-size: 12px; }
   .histogram-label { color: var(--text-secondary); font-weight: 600; }
   .histogram-track { height: 10px; border-radius: 6px; background: var(--series-1-track); overflow: hidden; }
@@ -600,62 +604,62 @@ export function renderDashboard(bundle) {
   </div>
 
   <div class="section">
-    <h2>1. Release Summary</h2>
+    <h2><span class="section-num"></span>Release Summary</h2>
     <div id="release-summary"></div>
   </div>
 
   <div class="section">
-    <h2>2. Story Points vs. Actual Points by Release</h2>
+    <h2><span class="section-num"></span>Story Points vs. Actual Points by Release</h2>
     <p class="caveat">Compare planned and delivered points across the selected releases. Use the developer selector to view the whole team or one developer.</p>
     <div id="release-point-comparison" class="card"></div>
   </div>
 
   <div class="section">
-    <h2>3. Release Progress Over Time</h2>
+    <h2><span class="section-num"></span>Release Progress Over Time</h2>
     <p class="caveat">Cumulative delivery against the release's total planned SP — shows whether work is landing steadily or bunching up toward the end.</p>
     <div id="release-progress"></div>
   </div>
 
   <div class="section two-col">
     <div class="card">
-      <h2>4. Ticket Status Breakdown</h2>
+      <h2><span class="section-num"></span>Ticket Status Breakdown</h2>
       <div id="ticket-status-breakdown"></div>
     </div>
     <div class="card">
-      <h2>5. Issue Type Breakdown</h2>
+      <h2><span class="section-num"></span>Issue Type Breakdown</h2>
       <div id="issue-type-breakdown"></div>
     </div>
   </div>
 
   <div class="section">
-    <h2>6. Engineering Activity Trend</h2>
+    <h2><span class="section-num"></span>Engineering Activity Trend</h2>
     <p class="caveat">Descriptive only — whether the team was active throughout the release or activity was concentrated in bursts. Not an activity score.</p>
     <div id="engineering-activity-trend"></div>
   </div>
 
   <div class="section"${githubEnabled ? '' : ' hidden'}>
-    <h2>7. PR Activity Trend</h2>
+    <h2><span class="section-num"></span>PR Activity Trend</h2>
     <div id="pr-activity-trend"></div>
   </div>
 
   <div class="section">
-    <h2>8. Delivery Flow: In Progress → Code Review</h2>
+    <h2><span class="section-num"></span>Delivery Flow: In Progress → Code Review</h2>
     <div id="cycle-time"></div>
   </div>
 
   <div class="section">
-    <h2>9. Developer Delivery</h2>
+    <h2><span class="section-num"></span>Developer Delivery</h2>
     <p class="meta" style="margin-top:-6px;">Click a row to see that developer's tickets below. Delivered AP is the primary delivery metric; Planned SP is workload context.</p>
     <div id="developer-delivery"></div>
   </div>
 
   <div class="section">
-    <h2>10. Developer Details</h2>
+    <h2><span class="section-num"></span>Developer Details</h2>
     <div id="developer-details"></div>
   </div>
 
   <div class="section">
-    <h2>11. All Release Tickets</h2>
+    <h2><span class="section-num"></span>All Release Tickets</h2>
     <div id="all-tickets"></div>
   </div>
 </div>

@@ -1,7 +1,7 @@
 # Productization changes, technical debt and roadmap
 
 This document accompanies the `feat/productize-for-arbisoft-reuse` branch. It
-lists what changed to turn the Xiangqi-specific dashboard into a reusable
+lists what changed to turn the original single-project dashboard into a reusable
 internal tool, what was deliberately left as is, and what should come next.
 
 ## Major changes
@@ -10,8 +10,8 @@ internal tool, what was deliberately left as is, and what should come next.
 
 - **New `src/config/index.js`** — every setting is an environment variable,
   validated on first use with all problems reported together. Replaces
-  `config/config.js`, which hard-coded the `bvs-xiangqi/*` repositories,
-  project key `XQ`, `arbisoft.atlassian.net`, three custom field ids and a
+  `config/config.js`, which hard-coded one team's repositories,
+  project key, Jira site, three custom field ids and a
   top-level `await` that hit the Jira API at import time.
 - Feature flags derived from configuration (`github`, `actualPoints`,
   `aiContribution`, `assistant`, `jiraEditing`, `reviewLogging`) drive both
@@ -58,7 +58,7 @@ internal tool, what was deliberately left as is, and what should come next.
 
 ### Assistant
 
-- All Xiangqi-specific aliases, repository names and prompt text removed;
+- All project-specific aliases, repository names and prompt text removed;
   repositories and vocabulary derive from config, with
   `ASSISTANT_EXTRA_INSTRUCTIONS` for team guidance.
 - Fixed `compactTicket`/`search_prs` reading non-existent PR fields
@@ -97,16 +97,33 @@ internal tool, what was deliberately left as is, and what should come next.
   test touches the network.
 - Documentation set under `docs/` and a rewritten README.
 
+### Pre-release hardening
+
+- **XSS:** the bundle JSON escape replaced `<` with itself, so a ticket
+  summary containing `</script>` could run script on the dashboard. Fixed and
+  the test now checks the whole page.
+- **CSRF:** write endpoints require a same-origin `application/json` request.
+- **Local server:** binds to `127.0.0.1` (`HOST`) and enforces Basic Auth when
+  credentials are set.
+- Ticket edits are limited to `JIRA_PROJECT_KEY`; the assistant's review
+  comment honours `REVIEW_LOGGING_ENABLED`; assistant links are http(s) only;
+  `JIRA_BASE_URL` must be https.
+- Section numbers follow the visible sections (no gap when GitHub is off); the
+  activity trend hides PR lines without GitHub; release progress starts at the
+  first activity instead of the oldest backlog ticket.
+- `package-lock.json` is committed, CI runs lint + tests, `.nvmrc` pins Node 20.
+- Test fixtures use fictional names and keys only.
+
 ## Behaviour changes to be aware of
 
-| Change                                                                         | Impact on the existing Xiangqi deployment                                                                                                                                             |
-| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Configuration moved to env vars                                                | Add `JIRA_PROJECT_KEY=XQ`, `GITHUB_REPOS=bvs-xiangqi/xiangqi-client,bvs-xiangqi/xiangqi-server`, the three `JIRA_*_FIELD` ids and `PROJECT_NAME` to Vercel. `npm run check` confirms. |
-| JQL scoped to project                                                          | None expected (versions were already XQ's).                                                                                                                                           |
-| Ticket-id extraction accepts more conventions and rejects other projects' keys | Possibly a few more PRs linked; none lost.                                                                                                                                            |
-| Review timings computed                                                        | Cached PRs show `null` until they change or `npm run cache:clear` runs.                                                                                                               |
-| `npm start` now runs the server (was: generate static file)                    | Use `npm run generate` for the static file.                                                                                                                                           |
-| Release picker ordering                                                        | Active first, then upcoming, then released newest-first.                                                                                                                              |
+| Change                                                                         | Impact on the original deployment                                                                                            |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Configuration moved to env vars                                                | Add `JIRA_PROJECT_KEY`, `GITHUB_REPOS`, the three `JIRA_*_FIELD` ids and `PROJECT_NAME` to Vercel. `npm run check` confirms. |
+| JQL scoped to project                                                          | None expected (versions already belonged to the project).                                                                    |
+| Ticket-id extraction accepts more conventions and rejects other projects' keys | Possibly a few more PRs linked; none lost.                                                                                   |
+| Review timings computed                                                        | Cached PRs show `null` until they change or `npm run cache:clear` runs.                                                      |
+| `npm start` now runs the server (was: generate static file)                    | Use `npm run generate` for the static file.                                                                                  |
+| Release picker ordering                                                        | Active first, then upcoming, then released newest-first.                                                                     |
 
 No metric definition was changed. Two ambiguities are documented in
 METRICS.md rather than changed: "Delivered AP" includes AP on unfinished

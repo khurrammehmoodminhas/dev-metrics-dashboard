@@ -723,6 +723,7 @@ export async function applyAssistantUpdate(action, bundle, refresh) {
 
   // Review-comment action: posts "{reviewer} spent {time} on code review".
   if (action.type === 'review_comment') {
+    if (!getConfig().features.reviewLogging) throw new Error('Code-review logging is disabled for this deployment.');
     const issueKey = assertIssueKey(action.issueKey);
     const reviewer = String(action.reviewer ?? '')
       .replace(/[\r\n]+/g, ' ')
