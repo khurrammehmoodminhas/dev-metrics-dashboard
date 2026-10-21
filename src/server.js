@@ -5,7 +5,8 @@ import http from 'node:http';
 import { getConfig, ConfigError } from './config/index.js';
 import { generateDashboard } from './index.js';
 import { renderDashboard } from './dashboard/render.js';
-import { readJsonBody, parseReleasesQuery } from './http/body.js';
+import { requireDashboardAuth } from './http/auth.js';
+import { HttpError, readJsonBody, parseReleasesQuery } from './http/body.js';
 import { sendJson, sendHtml, sendMethodNotAllowed, sendResult } from './http/respond.js';
 import { handleTicketUpdate, handleReviews, handleAssistant, handleRefresh, errorPage } from './http/handlers.js';
 import { log, warn } from './utils/logger.js';
@@ -49,6 +50,9 @@ async function route(req, res) {
       lastError: lastError?.message ?? null,
     });
   }
+
+  // Same Basic Auth as the Vercel deployment when credentials are set.
+  if (!requireDashboardAuth(req, res)) return;
 
   const ticketMatch = /^\/api\/tickets\/([^/]+)$/.exec(pathname);
   if (ticketMatch) {
@@ -112,6 +116,10 @@ async function bootstrap() {
 
   const server = http.createServer((req, res) => {
     route(req, res).catch((error) => {
+      if (error instanceof HttpError) {
+        if (!res.headersSent) sendJson(res, error.status, { ok: false, error: error.message });
+        return;
+      }
       warn(`Unhandled error on ${req.method} ${req.url}: ${error.stack ?? error.message}`);
       if (!res.headersSent) sendJson(res, 500, { ok: false, error: error.message });
       else res.end();
@@ -119,19 +127,22 @@ async function bootstrap() {
   });
 
   const port = config.server.port;
+  // Loopback by default: the local server can write to Jira with the team's
+  // token, so exposing it on the LAN is an explicit choice (HOST=0.0.0.0).
+  const host = config.server.host;
   server.on('error', (error) => {
     if (error.code === 'EADDRINUSE') {
       warn(`Port ${port} is already in use; trying ${port + 1}`);
       server.close(() => {
-        server.listen(port + 1, () => log(`Dashboard server listening on http://localhost:${port + 1}`));
+        server.listen(port + 1, host, () => log(`Dashboard server listening on http://${host}:${port + 1}`));
       });
       return;
     }
     throw error;
   });
 
-  server.listen(port, () => {
-    log(`Dashboard server listening on http://localhost:${port}`);
+  server.listen(port, host, () => {
+    log(`Dashboard server listening on http://${host}:${port}`);
   });
 }
 

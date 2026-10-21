@@ -26,9 +26,9 @@ import {
 function makeBundle() {
   return {
     tickets: {
-      'XQ-1': { key: 'XQ-1' },
-      'XQ-2': { key: 'XQ-2' },
-      'XQ-3': { key: 'XQ-3' },
+      'ACME-1': { key: 'ACME-1' },
+      'ACME-2': { key: 'ACME-2' },
+      'ACME-3': { key: 'ACME-3' },
     },
   };
 }
@@ -59,20 +59,20 @@ test('formatReviewComment builds the Jira comment copy', () => {
 test('addReviewLog posts a Jira comment and persists the log', async () => {
   const { stub, calls } = installFetchStub();
   try {
-    const result = await addReviewLog({ issueKey: 'XQ-1', reviewer: 'Alice', timeSpent: '2h', bundle: makeBundle() });
+    const result = await addReviewLog({ issueKey: 'ACME-1', reviewer: 'Alice', timeSpent: '2h', bundle: makeBundle() });
     assert.equal(result.log.reviewer, 'Alice');
     assert.equal(result.log.time_spent, '2h');
     assert.equal(result.log.comment, 'Alice spent 2h on code review');
     assert.equal(result.logs.length, 1);
 
     assert.equal(calls.length, 1);
-    assert.ok(calls[0].url.includes('/rest/api/3/issue/XQ-1/comment'));
+    assert.ok(calls[0].url.includes('/rest/api/3/issue/ACME-1/comment'));
     const body = JSON.parse(calls[0].options.body);
     assert.equal(body.body.content[0].content[0].text, 'Alice spent 2h on code review');
 
     const map = await getReviewLogsMap();
-    assert.equal(map['XQ-1'].length, 1);
-    assert.equal(map['XQ-1'][0].id, result.log.id);
+    assert.equal(map['ACME-1'].length, 1);
+    assert.equal(map['ACME-1'][0].id, result.log.id);
   } finally {
     stub.mock.restore();
   }
@@ -81,11 +81,11 @@ test('addReviewLog posts a Jira comment and persists the log', async () => {
 test('updateReviewLog edits the log and posts an update comment', async () => {
   const { stub, calls } = installFetchStub();
   try {
-    const added = await addReviewLog({ issueKey: 'XQ-3', reviewer: 'Alice', timeSpent: '2h', bundle: makeBundle() });
+    const added = await addReviewLog({ issueKey: 'ACME-3', reviewer: 'Alice', timeSpent: '2h', bundle: makeBundle() });
     calls.length = 0;
 
     const updated = await updateReviewLog({
-      issueKey: 'XQ-3',
+      issueKey: 'ACME-3',
       logId: added.log.id,
       reviewer: 'Alice',
       timeSpent: '3h',
@@ -107,13 +107,13 @@ test('updateReviewLog edits the log and posts an update comment', async () => {
 test('deleteReviewLog removes the log and drops the issue bucket when empty', async () => {
   const { stub } = installFetchStub();
   try {
-    const added = await addReviewLog({ issueKey: 'XQ-2', reviewer: 'Bob', timeSpent: '1.5h', bundle: makeBundle() });
-    const removed = await deleteReviewLog({ issueKey: 'XQ-2', logId: added.log.id, bundle: makeBundle() });
+    const added = await addReviewLog({ issueKey: 'ACME-2', reviewer: 'Bob', timeSpent: '1.5h', bundle: makeBundle() });
+    const removed = await deleteReviewLog({ issueKey: 'ACME-2', logId: added.log.id, bundle: makeBundle() });
     assert.equal(removed.log.id, added.log.id);
     assert.deepEqual(removed.logs, []);
 
     const map = await getReviewLogsMap();
-    assert.equal(map['XQ-2'], undefined);
+    assert.equal(map['ACME-2'], undefined);
   } finally {
     stub.mock.restore();
   }

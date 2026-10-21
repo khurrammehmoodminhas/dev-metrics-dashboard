@@ -4,7 +4,6 @@ node_modules/
 !.env.example
 data/cache/
 data/output/
-package-lock.json
 .vercel
 .DS_Store
 .playwright-mcp/

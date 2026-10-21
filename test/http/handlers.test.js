@@ -27,6 +27,8 @@ test('handleTicketUpdate rejects bad keys, empty and unknown fields before touch
   try {
     assert.equal((await handleTicketUpdate({ issueKey: 'nope', body: { sp: 1 }, refresh })).status, 400);
     assert.equal((await handleTicketUpdate({ issueKey: 'ACME-1', body: {}, refresh })).status, 400);
+    const otherProject = await handleTicketUpdate({ issueKey: 'OTHER-1', body: { updates: { sp: 1 } }, refresh });
+    assert.equal(otherProject.status, 403);
     const unknown = await handleTicketUpdate({ issueKey: 'ACME-1', body: { updates: { description: 'x' } }, refresh });
     assert.equal(unknown.status, 400);
     assert.match(unknown.json.error, /description/);

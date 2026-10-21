@@ -75,16 +75,17 @@ see "Adding a new project" in the README.
 
 ## Server and deployment
 
-| Variable                | Required      | Description                                                                                       | Example                |
-| ----------------------- | ------------- | ------------------------------------------------------------------------------------------------- | ---------------------- |
-| `PORT`                  | No            | Local server port. Default `3000` (falls over to the next port if busy).                          | `8080`                 |
-| `DATA_DIR`              | No            | Directory for the working cache and generated output. Default `./data` (or `/tmp` on Vercel).     | `/var/lib/metrics`     |
-| `DASHBOARD_USERNAME`    | On Vercel     | HTTP Basic Auth username protecting every route. Optional locally. Must be set with the password. | `team`                 |
-| `DASHBOARD_PASSWORD`    | On Vercel     | HTTP Basic Auth password.                                                                         | `a-long-random-string` |
-| `CRON_SECRET`           | On Vercel     | Bearer secret Vercel Cron sends to `/api/refresh`.                                                | `openssl rand -hex 32` |
-| `BLOB_READ_WRITE_TOKEN` | On Vercel     | Token of a **private** Vercel Blob store holding the dashboard snapshot and review logs.          | `vercel_blob_rw_...`   |
-| `VERCEL`                | Set by Vercel | Presence switches the cache to `/tmp` and makes Basic Auth mandatory. Don't set it yourself.      | —                      |
-| `REVIEW_LOGS_FILE`      | No (tests)    | Overrides the local review-log file path. Used by the test suite.                                 | —                      |
+| Variable                | Required      | Description                                                                                           | Example                |
+| ----------------------- | ------------- | ----------------------------------------------------------------------------------------------------- | ---------------------- |
+| `PORT`                  | No            | Local server port. Default `3000` (falls over to the next port if busy).                              | `8080`                 |
+| `HOST`                  | No            | Interface the local server listens on. Default `127.0.0.1`; use `0.0.0.0` only behind authentication. | `0.0.0.0`              |
+| `DATA_DIR`              | No            | Directory for the working cache and generated output. Default `./data` (or `/tmp` on Vercel).         | `/var/lib/metrics`     |
+| `DASHBOARD_USERNAME`    | On Vercel     | HTTP Basic Auth username protecting every route. Optional locally. Must be set with the password.     | `team`                 |
+| `DASHBOARD_PASSWORD`    | On Vercel     | HTTP Basic Auth password.                                                                             | `a-long-random-string` |
+| `CRON_SECRET`           | On Vercel     | Bearer secret Vercel Cron sends to `/api/refresh`.                                                    | `openssl rand -hex 32` |
+| `BLOB_READ_WRITE_TOKEN` | On Vercel     | Token of a **private** Vercel Blob store holding the dashboard snapshot and review logs.              | `vercel_blob_rw_...`   |
+| `VERCEL`                | Set by Vercel | Presence switches the cache to `/tmp` and makes Basic Auth mandatory. Don't set it yourself.          | —                      |
+| `REVIEW_LOGS_FILE`      | No (tests)    | Overrides the local review-log file path. Used by the test suite.                                     | —                      |
 
 ## Feature flags derived from configuration
 

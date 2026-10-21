@@ -9,9 +9,9 @@ function statusEntry(created, fromString, toString) {
   return { created, items: [{ field: 'status', fromString, toString }] };
 }
 
-// Modeled directly on XQ-4821's real changelog, confirmed live during this
-// project's build — including the real Code Review <-> Internal QA cycling.
-const REAL_XQ_4821_CHANGELOG = [
+// Shaped like a real Jira Cloud changelog, including Code Review <-> Internal QA
+// cycling.
+const REALISTIC_CHANGELOG = [
   statusEntry('2026-07-01T11:19:59.647+0500', 'Todo', 'Selected for Development'),
   statusEntry('2026-07-05T21:02:13.787+0500', 'Selected for Development', 'In Progress'),
   statusEntry('2026-07-07T12:12:43.923+0500', 'In Progress', 'Code Review'),
@@ -25,7 +25,7 @@ const REAL_XQ_4821_CHANGELOG = [
 ];
 
 test('derives the first In Progress -> first Code Review transition from a real changelog', () => {
-  const result = deriveCycleTimeFromChangelog(REAL_XQ_4821_CHANGELOG);
+  const result = deriveCycleTimeFromChangelog(REALISTIC_CHANGELOG);
   assert.equal(result.first_in_progress_at, new Date('2026-07-05T21:02:13.787+0500').toISOString());
   assert.equal(result.first_code_review_at_after_in_progress, new Date('2026-07-07T12:12:43.923+0500').toISOString());
   // ~1 day, 15h11m ≈ 39.18 hours
@@ -33,7 +33,7 @@ test('derives the first In Progress -> first Code Review transition from a real 
 });
 
 test('ignores later re-entries into Code Review after Internal QA cycling', () => {
-  const result = deriveCycleTimeFromChangelog(REAL_XQ_4821_CHANGELOG);
+  const result = deriveCycleTimeFromChangelog(REALISTIC_CHANGELOG);
   // The second and third "-> Code Review" transitions (after Internal QA) must
   // NOT be used — the derived timestamp must match the FIRST one only.
   assert.notEqual(

@@ -32,17 +32,17 @@ evidence next to every number.
 
 ## Features
 
-| Area                 | What you get                                                                                                       |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Releases             | Released / current / upcoming versions discovered from Jira; pick any combination; deep-linkable (`?releases=`)    |
-| Story points         | Planned SP vs delivered AP per release, per developer, per issue type; cumulative progress over time               |
-| Tickets              | Every ticket in the selection with status, assignee, points, AI %, linked PRs; filter, sort, inline edit           |
-| Code review          | Time to first review, approval and review completion per PR (from GitHub); manual "log review time" → Jira comment |
-| Cycle time           | In Progress → Code Review median/mean, histogram, tickets currently aging                                          |
-| AI contribution      | Ticket-level AI % from Jira; PR-level checklist score and AI co-authored commit share as evidence                  |
-| Activity             | PRs opened/merged and tickets started/completed per day; stale-PR list; per-developer timeline                     |
-| Jira write-back      | Edit SP/AP/AI %/status/assignee/summary/issue type from the table (allowlisted, validated, fails loudly)           |
-| Assistant (optional) | Ask questions in plain language over the dashboard data; proposes Jira edits that you confirm                      |
+| Area                 | What you get                                                                                                                                                                                          |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Releases             | Released / current / upcoming versions discovered from Jira; pick any combination; deep-linkable (`?releases=`)                                                                                       |
+| Story points         | Planned SP vs delivered AP per release, per developer, per issue type; cumulative progress over time                                                                                                  |
+| Tickets              | Every ticket in the selection with status, assignee, points, AI %, linked PRs; filter, sort, inline edit                                                                                              |
+| Code review          | Time to first review, approval and review completion per PR (from GitHub); manual "log review time" → Jira comment                                                                                    |
+| Cycle time           | In Progress → Code Review median/mean, histogram, tickets currently aging                                                                                                                             |
+| AI contribution      | Ticket-level AI % from Jira; PR-level checklist score and AI co-authored commit share as evidence                                                                                                     |
+| Activity             | PRs opened/merged and tickets started/completed per day; stale-PR list; per-developer timeline                                                                                                        |
+| Jira write-back      | Edit SP/AP/AI %/status/assignee/summary/issue type from the table (allowlisted, validated, fails loudly)                                                                                              |
+| Assistant (optional) | Ask questions in plain language over the dashboard data; proposes Jira edits that you confirm. Sends ticket data to the LLM provider — see [Security](docs/SECURITY.md#data-leaving-the-organisation) |
 
 Every feature that depends on something you haven't configured (GitHub, actual
 points, AI tracking, assistant, editing) is hidden rather than shown empty.
@@ -199,7 +199,10 @@ npm run build        # lint + test + generate
 ### Self-hosted
 
 Run `npm start` under a process manager behind a reverse proxy that adds
-authentication. Set `DATA_DIR` to a persistent volume.
+authentication (or set `DASHBOARD_USERNAME`/`DASHBOARD_PASSWORD`, which the
+local server also enforces). The server listens on `127.0.0.1` by default; set
+`HOST=0.0.0.0` when the proxy runs on another host. Set `DATA_DIR` to a
+persistent volume.
 
 ## Troubleshooting
 

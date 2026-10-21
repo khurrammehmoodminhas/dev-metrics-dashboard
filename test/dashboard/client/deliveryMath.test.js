@@ -11,7 +11,7 @@ import {
 
 function ticket(overrides) {
   return {
-    key: 'XQ-0000',
+    key: 'ACME-0000',
     status_category: 'done',
     sp: 2,
     ap: 2,
@@ -25,17 +25,17 @@ function ticket(overrides) {
 
 test('filterTicketsBySelectedReleases matches tickets whose fix_versions intersects the selection', () => {
   const ticketsByKey = {
-    'XQ-1': ticket({ key: 'XQ-1', fix_versions: [{ name: '8.5.0' }] }),
-    'XQ-2': ticket({ key: 'XQ-2', fix_versions: [{ name: '8.6.0' }] }),
-    'XQ-3': ticket({ key: 'XQ-3', fix_versions: [{ name: '7.0.0' }] }),
+    'ACME-1': ticket({ key: 'ACME-1', fix_versions: [{ name: '8.5.0' }] }),
+    'ACME-2': ticket({ key: 'ACME-2', fix_versions: [{ name: '8.6.0' }] }),
+    'ACME-3': ticket({ key: 'ACME-3', fix_versions: [{ name: '7.0.0' }] }),
   };
   const visible = filterTicketsBySelectedReleases(ticketsByKey, ['8.5.0', '8.6.0']);
-  assert.deepEqual(visible.map((t) => t.key).sort(), ['XQ-1', 'XQ-2']);
+  assert.deepEqual(visible.map((t) => t.key).sort(), ['ACME-1', 'ACME-2']);
 });
 
 test('filterTicketsBySelectedReleases counts a multi-release ticket only once when both its releases are selected', () => {
   const ticketsByKey = {
-    'XQ-1': ticket({ key: 'XQ-1', fix_versions: [{ name: '8.5.0' }, { name: '8.6.0' }] }),
+    'ACME-1': ticket({ key: 'ACME-1', fix_versions: [{ name: '8.5.0' }, { name: '8.6.0' }] }),
   };
   const visible = filterTicketsBySelectedReleases(ticketsByKey, ['8.5.0', '8.6.0']);
   assert.equal(visible.length, 1);
@@ -68,9 +68,9 @@ test('computeReleaseSummary averages AI contribution only over tickets with a re
 
 test('computeReleasePointComparison totals each release and can filter to one developer', () => {
   const tickets = [
-    ticket({ key: 'XQ-1', assignee_account_id: 'dev-a', sp: 3, ap: 2, fix_versions: [{ name: '8.5.0' }] }),
+    ticket({ key: 'ACME-1', assignee_account_id: 'dev-a', sp: 3, ap: 2, fix_versions: [{ name: '8.5.0' }] }),
     ticket({
-      key: 'XQ-2',
+      key: 'ACME-2',
       assignee_account_id: 'dev-b',
       sp: 5,
       ap: 4,

@@ -28,6 +28,7 @@ const DEFAULTS = Object.freeze({
   REVIEW_LOGGING_ENABLED: 'true',
   REVIEW_COMMENT_TEMPLATE: '{reviewer} spent {time} on code review',
   PORT: '3000',
+  HOST: '127.0.0.1',
 });
 
 const CUSTOM_FIELD_RE = /^customfield_\d+$/;
@@ -99,7 +100,7 @@ export function loadConfig(env = process.env) {
   // --- Jira -----------------------------------------------------------------
   const jiraBaseUrl = read(env, 'JIRA_BASE_URL').replace(/\/+$/, '');
   if (!jiraBaseUrl) problems.push('JIRA_BASE_URL is required (e.g. https://your-org.atlassian.net)');
-  else if (!/^https?:\/\//.test(jiraBaseUrl)) problems.push('JIRA_BASE_URL must start with https://');
+  else if (!/^https:\/\//.test(jiraBaseUrl)) problems.push('JIRA_BASE_URL must start with https://');
 
   const jiraEmail = read(env, 'JIRA_EMAIL');
   const jiraApiToken = read(env, 'JIRA_API_TOKEN');
@@ -231,6 +232,7 @@ export function loadConfig(env = process.env) {
     }),
     server: Object.freeze({
       port,
+      host: read(env, 'HOST'),
       isVercel,
       dataDir: read(env, 'DATA_DIR') || null,
       dashboardUsername: dashboardUsername || null,

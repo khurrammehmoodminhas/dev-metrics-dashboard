@@ -388,7 +388,7 @@
       .map(function (pr) {
         var reviewInfo = '';
         if (pr.pr_reviewers && pr.pr_reviewers.length > 0) {
-          reviewInfo = ' [' + pr.pr_reviewers.join(', ') + ']';
+          reviewInfo = ' [' + pr.pr_reviewers.map(escapeHtml).join(', ') + ']';
         }
         var reviewTime = pr.pr_review_completion_time_hours !== null 
           ? ' (' + fmtNum(pr.pr_review_completion_time_hours, 1) + 'h)'
@@ -832,19 +832,20 @@
     var el = document.getElementById('engineering-activity-trend');
     var trend = buildEngineeringActivityTrend(getVisibleTickets());
     if (!trend.pr_opened_by_day.length) {
-      el.innerHTML = '<p class="empty-state">No PR or ticket activity recorded in the selected release(s).</p>';
+      el.innerHTML = '<p class="empty-state">No ' + (FEATURES.github ? 'PR or ' : '') + 'ticket activity recorded in the selected release(s).</p>';
       return;
     }
     el.innerHTML =
       '<p class="chart-note">Counts ' + bucketCaption(trend.bucket_period) +
       ', over the period from the first to the most recent activity in this selection.</p>' +
       buildLineChart(
-      [
+      (FEATURES.github ? [
         { name: 'PRs opened', points: trend.pr_opened_by_day },
         { name: 'PRs merged', points: trend.pr_merged_by_day },
+      ] : []).concat([
         { name: 'Tickets → In Progress', points: trend.tickets_in_progress_by_day },
         { name: 'Tickets completed', points: trend.tickets_completed_by_day },
-      ],
+      ]),
       { ariaLabel: 'Engineering activity trend', height: 260 },
     );
   }
