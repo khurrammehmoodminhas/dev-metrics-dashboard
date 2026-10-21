@@ -2,8 +2,8 @@ import { generateDashboard } from './index.js';
 import { readDashboardSnapshot, writeDashboardSnapshot } from './cache/dashboardSnapshot.js';
 
 /** Regenerates the bundle and stores it as the durable snapshot (Vercel). */
-export async function refreshDashboard() {
-  const bundle = await generateDashboard({ writeOutput: false });
+export async function refreshDashboard({ onProgress } = {}) {
+  const bundle = await generateDashboard({ writeOutput: false, onProgress });
   await writeDashboardSnapshot(bundle);
   return bundle;
 }

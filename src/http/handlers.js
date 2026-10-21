@@ -136,13 +136,13 @@ export async function handleAssistant({ body, getBundle, refresh, config = getCo
 }
 
 /** GET /api/refresh */
-export async function handleRefresh({ refresh, timeoutMs = 120000 }) {
+export async function handleRefresh({ refresh, timeoutMs = 270000, onProgress = () => {} }) {
   let timer;
   const timeout = new Promise((_, reject) => {
     timer = setTimeout(() => reject(new Error('Dashboard refresh timed out.')), timeoutMs);
   });
   try {
-    const bundle = await Promise.race([refresh(), timeout]);
+    const bundle = await Promise.race([refresh(onProgress), timeout]);
     if (!bundle) return failure(500, 'Dashboard refresh failed. Check server logs.');
     return { status: 200, json: { ok: true, generatedAt: bundle.generated_at, warnings: bundle.warnings ?? [] } };
   } catch (error) {

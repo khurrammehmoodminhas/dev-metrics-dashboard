@@ -9,6 +9,7 @@ import { requireDashboardAuth } from './http/auth.js';
 import { HttpError, readJsonBody, parseReleasesQuery } from './http/body.js';
 import { sendJson, sendHtml, sendMethodNotAllowed, sendResult } from './http/respond.js';
 import { handleTicketUpdate, handleReviews, handleAssistant, handleRefresh, errorPage } from './http/handlers.js';
+import { sendRefreshStream } from './http/refreshStream.js';
 import { log, warn } from './utils/logger.js';
 
 const REFRESH_INTERVAL_MS = 60 * 1000;
@@ -17,9 +18,9 @@ let lastBundle = null;
 let lastDashboardHtml = '';
 let lastError = null;
 
-async function refreshData() {
+async function refreshData({ onProgress } = {}) {
   try {
-    const bundle = await generateDashboard();
+    const bundle = await generateDashboard({ onProgress });
     lastBundle = bundle;
     lastDashboardHtml = renderDashboard(bundle);
     lastError = null;
@@ -79,6 +80,9 @@ async function route(req, res) {
 
   if (pathname === '/api/refresh') {
     if (req.method !== 'GET' && req.method !== 'POST') return sendMethodNotAllowed(res, 'GET, POST');
+    if (url.searchParams.get('stream') === '1') {
+      return sendRefreshStream(res, (onProgress) => refreshData({ onProgress }));
+    }
     return sendResult(res, await handleRefresh({ refresh: refreshData }));
   }
 

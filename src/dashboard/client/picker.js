@@ -1290,18 +1290,52 @@
       var controller = new AbortController();
       var refreshTimeout = window.setTimeout(function () {
         controller.abort();
-      }, 120000);
+      }, 280000);
 
       button.disabled = true;
       button.textContent = 'Refreshing…';
-      if (status) status.textContent = 'Fetching Jira and GitHub data…';
+      if (status) status.textContent = 'Starting dashboard refresh…';
 
-      fetch('/api/refresh', { credentials: 'same-origin', signal: controller.signal })
+      fetch('/api/refresh?stream=1', { credentials: 'same-origin', signal: controller.signal })
         .then(function (response) {
-          return response.json().then(function (payload) {
-            if (!response.ok || !payload.ok) throw new Error(payload.error || 'Unable to refresh the dashboard.');
-            return payload;
-          });
+          if (!response.ok) {
+            return response.text().then(function (message) {
+              throw new Error(message || 'Unable to refresh the dashboard.');
+            });
+          }
+          if (!response.body) throw new Error('This browser cannot display refresh progress.');
+
+          var reader = response.body.getReader();
+          var decoder = new TextDecoder();
+          var pending = '';
+          var result = null;
+
+          function readNext() {
+            return reader.read().then(function (chunk) {
+              if (chunk.done) {
+                pending += decoder.decode();
+                if (pending.trim()) processLine(pending);
+                if (!result) throw new Error('The refresh ended before it returned a result.');
+                if (!result.ok) throw new Error(result.error || 'Unable to refresh the dashboard.');
+                return result;
+              }
+
+              pending += decoder.decode(chunk.value, { stream: true });
+              var lines = pending.split('\n');
+              pending = lines.pop();
+              lines.forEach(processLine);
+              return readNext();
+            });
+          }
+
+          function processLine(line) {
+            if (!line.trim()) return;
+            var event = JSON.parse(line);
+            if (event.type === 'progress' && status) status.textContent = event.message;
+            if (event.type === 'result') result = event;
+          }
+
+          return readNext();
         })
         .then(function () {
           window.clearTimeout(refreshTimeout);

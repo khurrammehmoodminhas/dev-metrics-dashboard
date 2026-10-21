@@ -591,7 +591,7 @@ export function renderDashboard(bundle) {
     </div>
     <div class="dashboard-actions">
       <button id="dashboard-refresh" class="refresh-button" type="button">Refresh dashboard</button>
-      <span id="dashboard-refresh-status" class="refresh-status"></span>
+      <span id="dashboard-refresh-status" class="refresh-status" role="status" aria-live="polite"></span>
     </div>
   </header>
 
